@@ -3,8 +3,8 @@ import React, { useContext, useCallback } from 'react';
 import { wsService } from '@/services/websocket-service';
 import { useLocalStorage } from '@/hooks/utils/use-local-storage';
 
-const DEFAULT_WS_URL = 'ws://127.0.0.1:12393/client-ws';
-const DEFAULT_BASE_URL = 'http://127.0.0.1:12393';
+const DEFAULT_WS_URL = 'wss://YOUR-HOST.ts.net:8443/client-ws';
+const DEFAULT_BASE_URL = 'https://YOUR-HOST.ts.net:8443';
 
 export interface HistoryInfo {
   uid: string;
