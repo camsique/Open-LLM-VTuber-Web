@@ -16,7 +16,8 @@ import { ChatHistoryProvider } from "./context/chat-history-context";
 import { CharacterConfigProvider } from "./context/character-config-context";
 import { Toaster } from "./components/ui/toaster";
 import { VADProvider } from "./context/vad-context";
-import { Live2D } from "./components/canvas/live2d";
+import { AvatarSurface } from "./components/avatar/avatar-surface";
+import { AvatarConfigProvider } from "./context/avatar-config-context";
 import TitleBar from "./components/electron/title-bar";
 import { InputSubtitle } from "./components/electron/input-subtitle";
 import { ProactiveSpeakProvider } from "./context/proactive-speak-context";
@@ -36,7 +37,7 @@ function AppContent(): JSX.Element {
   const [isFooterCollapsed, setIsFooterCollapsed] = useState(false);
   const { mode } = useMode();
   const isElectron = window.api !== undefined;
-  const live2dContainerRef = useRef<HTMLDivElement>(null);
+  const avatarContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -59,7 +60,7 @@ function AppContent(): JSX.Element {
   document.body.style.width = '100%';
 
   // Define base style properties shared across modes/breakpoints
-  const live2dBaseStyle = {
+  const avatarBaseStyle = {
     position: "absolute" as const,
     overflow: "hidden",
     transition: "all 0.3s ease-in-out", // Optional transition
@@ -67,8 +68,8 @@ function AppContent(): JSX.Element {
   };
 
   // Define styles specifically for the "window" mode, using responsive syntax
-  const getResponsiveLive2DWindowStyle = (sidebarVisible: boolean) => ({
-    ...live2dBaseStyle,
+  const getResponsiveAvatarWindowStyle = (sidebarVisible: boolean) => ({
+    ...avatarBaseStyle,
     top: isElectron ? "30px" : "0px",
     height: `calc(100% - ${isElectron ? "30px" : "0px"})`,
     zIndex: 5, // Ensure it's layered correctly below UI but above background
@@ -83,8 +84,8 @@ function AppContent(): JSX.Element {
   });
 
   // Define styles specifically for the "pet" mode
-  const live2dPetStyle = {
-    ...live2dBaseStyle,
+  const avatarPetStyle = {
+    ...avatarBaseStyle,
     top: 0, // Override position for pet mode
     left: 0,
     width: "100vw", // Full viewport
@@ -95,14 +96,14 @@ function AppContent(): JSX.Element {
   return (
     <>
       <Box
-        ref={live2dContainerRef}
+        ref={avatarContainerRef}
         // Apply styles conditionally based on mode
         // Use the function to get dynamic responsive styles for window mode
         {...(mode === "window"
-          ? getResponsiveLive2DWindowStyle(showSidebar)
-          : live2dPetStyle)}
+          ? getResponsiveAvatarWindowStyle(showSidebar)
+          : avatarPetStyle)}
       >
-        <Live2D />
+        <AvatarSurface />
       </Box>
 
       {/* Conditional Rendering of Window UI */}
@@ -170,7 +171,7 @@ function App(): JSX.Element {
 // New component to access mode for global styles
 function AppWithGlobalStyles(): JSX.Element {
   return (
-    <>
+    <AvatarConfigProvider>
       <CameraProvider>
         <ScreenCaptureProvider>
           <CharacterConfigProvider>
@@ -201,7 +202,7 @@ function AppWithGlobalStyles(): JSX.Element {
           </CharacterConfigProvider>
         </ScreenCaptureProvider>
       </CameraProvider>
-    </>
+    </AvatarConfigProvider>
   );
 }
 

@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { memo, useRef, useEffect } from "react";
 import { useLive2DConfig } from "@/context/live2d-config-context";
-import { useIpcHandlers } from "@/hooks/utils/use-ipc-handlers";
 import { useInterrupt } from "@/hooks/utils/use-interrupt";
 import { useAudioTask } from "@/hooks/utils/use-audio-task";
 import { useLive2DSpeechAdapter } from "@/hooks/canvas/use-live2d-speech-adapter";
@@ -41,8 +40,7 @@ export const Live2D = memo(
       canvasRef,
     });
 
-    // Setup hooks
-    useIpcHandlers();
+    // Setup hooks (IPC handlers are mounted by AvatarSurface)
     useInterrupt();
     // Talk motion + lip sync follow the renderer-neutral playback service.
     useLive2DSpeechAdapter();

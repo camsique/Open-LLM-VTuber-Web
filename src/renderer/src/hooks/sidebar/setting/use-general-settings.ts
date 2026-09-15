@@ -8,6 +8,8 @@ import { useCamera } from '@/context/camera-context';
 import { useSwitchCharacter } from '@/hooks/utils/use-switch-character';
 import { useConfig } from '@/context/character-config-context';
 import i18n from 'i18next';
+import { useAvatarConfig } from '@/context/avatar-config-context';
+import { isAvatarRendererKind } from '@/components/avatar/avatar-renderer-types';
 
 export const IMAGE_COMPRESSION_QUALITY_KEY = 'appImageCompressionQuality';
 export const DEFAULT_IMAGE_COMPRESSION_QUALITY = 0.8;
@@ -26,6 +28,7 @@ interface GeneralSettings {
   showSubtitle: boolean
   imageCompressionQuality: number;
   imageMaxWidth: number;
+  avatarRenderer: string[];
 }
 
 interface UseGeneralSettingsProps {
@@ -78,6 +81,7 @@ export const useGeneralSettings = ({
   const { startBackgroundCamera, stopBackgroundCamera } = useCamera();
   const { configFiles, getFilenameByName } = useConfig();
   const { switchCharacter } = useSwitchCharacter();
+  const { renderer: avatarRenderer, setRenderer: setAvatarRenderer } = useAvatarConfig();
 
   const getCurrentBgKey = (): string[] => {
     if (!bgUrlContext?.backgroundUrl) return [];
@@ -106,6 +110,7 @@ export const useGeneralSettings = ({
     showSubtitle,
     imageCompressionQuality: loadInitialCompressionQuality(),
     imageMaxWidth: loadInitialImageMaxWidth(),
+    avatarRenderer: [avatarRenderer],
   };
 
   const [settings, setSettings] = useState<GeneralSettings>(initialSettings);
@@ -130,7 +135,12 @@ export const useGeneralSettings = ({
     }
     localStorage.setItem(IMAGE_COMPRESSION_QUALITY_KEY, settings.imageCompressionQuality.toString());
     localStorage.setItem(IMAGE_MAX_WIDTH_KEY, settings.imageMaxWidth.toString());
-  }, [settings, bgUrlContext, baseUrl, onWsUrlChange, onBaseUrlChange, setShowSubtitle]);
+
+    const nextRenderer = settings.avatarRenderer[0];
+    if (isAvatarRendererKind(nextRenderer) && nextRenderer !== avatarRenderer) {
+      setAvatarRenderer(nextRenderer);
+    }
+  }, [settings, bgUrlContext, baseUrl, onWsUrlChange, onBaseUrlChange, setShowSubtitle, avatarRenderer, setAvatarRenderer]);
 
   useEffect(() => {
     if (confName) {
@@ -197,6 +207,10 @@ export const useGeneralSettings = ({
     }
     onWsUrlChange(originalSettings.wsUrl);
     onBaseUrlChange(originalSettings.baseUrl);
+    const originalRenderer = originalSettings.avatarRenderer[0];
+    if (isAvatarRendererKind(originalRenderer)) {
+      setAvatarRenderer(originalRenderer);
+    }
 
     // Restore original character preset
     if (originalConfName) {

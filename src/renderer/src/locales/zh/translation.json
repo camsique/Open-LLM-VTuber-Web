@@ -17,6 +17,9 @@
     },
     "general": {
       "language": "语言",
+      "avatarRenderer": "虚拟形象渲染器",
+      "avatarRendererWintermute": "Wintermute（光球）",
+      "avatarRendererLive2d": "Live2D 模型",
       "useCameraBackground": "使用摄像头背景",
       "showSubtitle": "显示字幕",
       "backgroundImage": "背景图片",

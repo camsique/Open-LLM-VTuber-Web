@@ -15,6 +15,7 @@ interface GeneralProps {
 
 // Data collection definition
 const useCollections = () => {
+  const { t } = useTranslation();
   const { backgroundFiles } = useBgUrl() || {};
   const { configFiles } = useConfig();
 
@@ -33,6 +34,13 @@ const useCollections = () => {
       })) || [],
   });
 
+  const avatarRenderers = createListCollection({
+    items: [
+      { label: t("settings.general.avatarRendererWintermute"), value: "wintermute" },
+      { label: t("settings.general.avatarRendererLive2d"), value: "live2d" },
+    ],
+  });
+
   const characterPresets = createListCollection({
     items: configFiles.map((config) => ({
       label: config.name,
@@ -44,6 +52,7 @@ const useCollections = () => {
     languages,
     backgrounds,
     characterPresets,
+    avatarRenderers,
   };
 };
 
@@ -85,6 +94,14 @@ function General({ onSave, onCancel }: GeneralProps): JSX.Element {
         onChange={(value) => handleSettingChange("language", value)}
         collection={collections.languages}
         placeholder={t("settings.general.language")}
+      />
+
+      <SelectField
+        label={t("settings.general.avatarRenderer")}
+        value={settings.avatarRenderer}
+        onChange={(value) => handleSettingChange("avatarRenderer", value)}
+        collection={collections.avatarRenderers}
+        placeholder={t("settings.general.avatarRenderer")}
       />
 
       <SwitchField

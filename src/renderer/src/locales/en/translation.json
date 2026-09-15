@@ -17,6 +17,9 @@
     },
     "general": {
       "language": "Language",
+      "avatarRenderer": "Avatar renderer",
+      "avatarRendererWintermute": "Wintermute (orb)",
+      "avatarRendererLive2d": "Live2D model",
       "useCameraBackground": "Use Camera Background",
       "showSubtitle": "Show Subtitle",
       "backgroundImage": "Background Image",
