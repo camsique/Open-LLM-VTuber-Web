@@ -26,7 +26,15 @@ console.error = (...args: any[]) => {
   originalConsoleError.apply(console, args);
 };
 
-if (typeof window !== 'undefined') {
+const isWintermuteDevPage = typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('page') === 'wintermute-dev';
+
+if (isWintermuteDevPage) {
+  // Standalone renderer harness: no Live2D core, no backend.
+  import('./components/avatar/wintermute/wintermute-dev-page').then(({ WintermuteDevPage }) => {
+    createRoot(document.getElementById('root')!).render(<WintermuteDevPage />);
+  });
+} else if (typeof window !== 'undefined') {
   (window as any).getLAppAdapter = () => LAppAdapter.getInstance();
 
   // Dynamically load the Live2D Core script
