@@ -181,22 +181,23 @@ function AppWithGlobalStyles(): JSX.Element {
                 <ProactiveSpeakProvider>
                   <Live2DConfigProvider>
                     <SubtitleProvider>
-                      <VADProvider>
-                        <BgUrlProvider>
-                          <GroupProvider>
-                            <BrowserProvider>
-                              <AudioPlaybackProvider>
+                      {/* Above VADProvider: it calls useInterrupt(), which needs playback. */}
+                      <AudioPlaybackProvider>
+                        <VADProvider>
+                          <BgUrlProvider>
+                            <GroupProvider>
+                              <BrowserProvider>
                                 <VesselStateProvider>
                                   <WebSocketHandler>
                                     <Toaster />
                                     <AppContent />
                                   </WebSocketHandler>
                                 </VesselStateProvider>
-                              </AudioPlaybackProvider>
-                            </BrowserProvider>
-                          </GroupProvider>
-                        </BgUrlProvider>
-                      </VADProvider>
+                              </BrowserProvider>
+                            </GroupProvider>
+                          </BgUrlProvider>
+                        </VADProvider>
+                      </AudioPlaybackProvider>
                     </SubtitleProvider>
                   </Live2DConfigProvider>
                 </ProactiveSpeakProvider>
