@@ -61,3 +61,5 @@ out
 .cursorrules
 # Wintermute headless screenshots (scripts/wintermute-screenshots.mjs)
 screenshots/
+test-results/
+playwright-report/
