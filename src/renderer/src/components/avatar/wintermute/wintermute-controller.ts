@@ -15,6 +15,9 @@ import {
   snapChannels,
 } from './wintermute-motion';
 
+/** Live speech values read at frame time (never through React). */
+export type SpeechSource = () => { rms: number; peak: number } | null | undefined;
+
 export interface ControllerFrame {
   channels: MotionChannels;
   /** 0 open .. 1 closed. */
@@ -42,6 +45,8 @@ export class WintermuteController {
 
   private lastBlink = 0;
 
+  private speechSource: SpeechSource | null = null;
+
   constructor(config: WintermuteConfig, seed: number, startTimeSec = 0) {
     this.config = config;
     this.channels = createChannels(config);
@@ -51,6 +56,20 @@ export class WintermuteController {
 
   setInput(input: VesselFrameInput): void {
     this.input = input;
+  }
+
+  setSpeechSource(source: SpeechSource | null): void {
+    this.speechSource = source;
+  }
+
+  /** Input with live speech values merged in while speech is active. */
+  private liveInput(dtSec: number): VesselFrameInput {
+    const timestampMs = this.input.timestampMs + Math.max(0, dtSec) * 1000;
+    const live = this.input.speech.active && this.speechSource ? this.speechSource() : null;
+    const speech = live
+      ? { active: true, rms: live.rms, peak: live.peak }
+      : this.input.speech;
+    return { ...this.input, timestampMs, speech };
   }
 
   getInput(): VesselFrameInput {
@@ -66,11 +85,8 @@ export class WintermuteController {
   step(dtSec: number, timeSec: number): ControllerFrame {
     // Keep the input's clock in step with the render clock so state-relative
     // effects (complete bump, interrupted dip) progress between React updates.
-    const liveInput: VesselFrameInput = {
-      ...this.input,
-      timestampMs: this.input.timestampMs + Math.max(0, dtSec) * 1000,
-    };
-    this.input = liveInput;
+    const liveInput = this.liveInput(dtSec);
+    this.input = { ...this.input, timestampMs: liveInput.timestampMs };
 
     const targets = computeVisualTargets(liveInput, this.config, timeSec);
     advanceChannels(this.channels, targets, dtSec, this.config);
@@ -89,7 +105,7 @@ export class WintermuteController {
 
   /** Jump straight to the targets (deterministic screenshots). */
   snap(timeSec: number): ControllerFrame {
-    const targets = computeVisualTargets(this.input, this.config, timeSec);
+    const targets = computeVisualTargets(this.liveInput(0), this.config, timeSec);
     snapChannels(this.channels, targets);
     this.driftWeight = targets.driftAllowed ? 1 : 0;
     this.lastBlink = 0;

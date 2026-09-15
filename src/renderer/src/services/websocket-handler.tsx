@@ -21,6 +21,9 @@ import { useLocalStorage } from '@/hooks/utils/use-local-storage';
 import { useGroup } from '@/context/group-context';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
 import { useBrowser } from '@/context/browser-context';
+import {
+  handleConversationChainStart, handleToolCallStatus, handleVesselStateEvent,
+} from '@/services/vessel-event-adapter';
 
 function WebSocketHandler({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -70,6 +73,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         setAiState('thinking-speaking');
         audioTaskQueue.clearQueue();
         clearResponse();
+        handleConversationChainStart();
         break;
       case 'conversation-chain-end':
         audioTaskQueue.addTask(() => new Promise<void>((resolve) => {
@@ -264,6 +268,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         interrupt(false); // do not send interrupt signal to server
         break;
       case 'tool_call_status':
+        handleToolCallStatus(message);
         if (message.tool_id && message.tool_name && message.status) {
           // If there's browser view data included, store it in the browser context
           if (message.browser_view) {
@@ -287,6 +292,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         }
         break;
       default:
+        if (handleVesselStateEvent(message)) break;
         console.warn('Unknown message type:', message.type);
     }
   }, [aiState, addAudioTask, appendHumanMessage, baseUrl, bgUrlContext, setAiState, setConfName, setConfUid, setConfigFiles, setCurrentHistoryUid, setHistoryList, setMessages, setModelInfo, setSubtitleText, startMic, stopMic, setSelfUid, setGroupMembers, setIsOwner, backendSynthComplete, setBackendSynthComplete, clearResponse, handleControlMessage, appendOrUpdateToolCallMessage, interrupt, setBrowserViewData, t]);

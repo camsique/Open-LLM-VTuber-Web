@@ -6,6 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { ModeProvider } from '@/context/mode-context';
+import { AiStateProvider } from '@/context/ai-state-context';
 import { AvatarConfigProvider, useAvatarConfig } from '@/context/avatar-config-context';
 import { VesselStateProvider, useVesselState } from '@/context/vessel-state-context';
 import { WintermuteCanvas } from './wintermute-canvas';
@@ -247,12 +248,14 @@ export function WintermuteDevPage(): JSX.Element {
   return (
     <ModeProvider>
       <AvatarConfigProvider>
-        <VesselStateProvider>
-          <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-            <Controls />
-            <Stage />
-          </div>
-        </VesselStateProvider>
+        <AiStateProvider>
+          <VesselStateProvider>
+            <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+              <Controls />
+              <Stage />
+            </div>
+          </VesselStateProvider>
+        </AiStateProvider>
       </AvatarConfigProvider>
     </ModeProvider>
   );

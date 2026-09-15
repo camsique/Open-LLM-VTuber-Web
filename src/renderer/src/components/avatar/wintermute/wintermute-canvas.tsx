@@ -25,6 +25,7 @@ import {
 import { WintermuteFallback } from './wintermute-fallback';
 import { installWintermuteDebug, isWintermuteDebugEnabled } from './wintermute-debug';
 import type { VesselFrameInput } from './vessel-types';
+import { audioPlaybackService } from '@/services/audio-playback-service';
 
 const HOVER_COMPONENT_ID = 'wintermute-orb';
 const PET_POSITION_KEY = 'wintermutePetPosition';
@@ -83,6 +84,12 @@ export function WintermuteCanvas(): JSX.Element {
   }), [frame, debugOverride, osReducedMotion]);
   const frameRef = useRef(effectiveFrame);
   frameRef.current = effectiveFrame;
+  // Synchronous copy so several debug calls in one tick compose before React
+  // re-renders (setState + setRms + setTool from a script or the console).
+  const overrideRef = useRef(debugOverride);
+  useEffect(() => {
+    overrideRef.current = debugOverride;
+  }, [debugOverride]);
 
   // ---- scene lifecycle ---------------------------------------------------
   useEffect(() => {
@@ -90,7 +97,15 @@ export function WintermuteCanvas(): JSX.Element {
     if (!mount) return undefined;
     let scene: WintermuteSceneHandle;
     try {
-      scene = createWintermuteScene(mount, { config: configRef.current });
+      scene = createWintermuteScene(mount, {
+        config: configRef.current,
+        speechSource: () => {
+          const forced = overrideRef.current?.speech;
+          if (forced) return { rms: forced.rms, peak: forced.peak };
+          const s = audioPlaybackService.getSnapshot();
+          return { rms: s.rms, peak: s.peak };
+        },
+      });
     } catch (error) {
       console.error('[wintermute] renderer unavailable:', error);
       setFailure(error instanceof Error ? error.message : String(error));
@@ -118,12 +133,6 @@ export function WintermuteCanvas(): JSX.Element {
 
   // ---- debug API -----------------------------------------------------------
   const debugEnabled = useMemo(isWintermuteDebugEnabled, []);
-  // Synchronous copy so several debug calls in one tick compose before React
-  // re-renders (setState + setRms + setTool from a script or the console).
-  const overrideRef = useRef(debugOverride);
-  useEffect(() => {
-    overrideRef.current = debugOverride;
-  }, [debugOverride]);
   const setOverrideSync = useCallback((override: Parameters<typeof setDebugOverride>[0]) => {
     overrideRef.current = override ? { ...override } : null;
     setDebugOverride(override);

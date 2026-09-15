@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import type { WintermuteConfig } from './wintermute-config';
 import type { VesselFrameInput } from './vessel-types';
-import { WintermuteController } from './wintermute-controller';
+import { SpeechSource, WintermuteController } from './wintermute-controller';
 import { idleDriftOffset } from './wintermute-motion';
 import {
   OrbUniforms,
@@ -36,6 +36,8 @@ export interface WintermuteStats {
 
 export interface WintermuteSceneHandle {
   setInput(input: VesselFrameInput): void;
+  /** Live rms/peak read every frame while speech is active. */
+  setSpeechSource(source: SpeechSource | null): void;
   setConfig(config: WintermuteConfig): void;
   resize(): void;
   pause(): void;
@@ -52,6 +54,7 @@ export interface WintermuteSceneOptions {
   config: WintermuteConfig;
   /** Seed for the blink scheduler; defaults to a per-session random seed. */
   seed?: number;
+  speechSource?: SpeechSource;
 }
 
 const CAMERA_FOV_DEG = 24;
@@ -104,6 +107,7 @@ export function createWintermuteScene(
   headGroup.add(orbMesh);
 
   const controller = new WintermuteController(config, seed, 0);
+  controller.setSpeechSource(options.speechSource ?? null);
 
   // ---- clock / loop -------------------------------------------------------
   let rafId: number | null = null;
@@ -251,6 +255,9 @@ export function createWintermuteScene(
         applyFrame(0, timeOverride, true);
         render();
       }
+    },
+    setSpeechSource(source) {
+      controller.setSpeechSource(source);
     },
     setConfig(next) {
       const geometryChanged = next.geometry.radius !== config.geometry.radius
