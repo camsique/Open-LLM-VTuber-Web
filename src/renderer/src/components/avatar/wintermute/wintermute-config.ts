@@ -69,7 +69,7 @@ export const DEFAULT_WINTERMUTE_CONFIG: WintermuteConfig = {
     detail: 5,
     facetStrength: 0.16,
     verticalOffset: 0.12,
-    viewportFill: 0.55,
+    viewportFill: 0.48,
   },
   colors: {
     base: '#171a1e',

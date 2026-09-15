@@ -75,6 +75,7 @@ export function WintermuteCanvas(): JSX.Element {
   const [contextLost, setContextLost] = useState(false);
   const [statsVisible, setStatsVisible] = useState(false);
   const [stats, setStats] = useState<WintermuteStats | null>(null);
+  const [liveRms, setLiveRms] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
 
@@ -151,7 +152,10 @@ export function WintermuteCanvas(): JSX.Element {
 
   useEffect(() => {
     if (!statsVisible) return undefined;
-    const id = window.setInterval(() => setStats(sceneRef.current?.getStats() ?? null), 500);
+    const id = window.setInterval(() => {
+      setStats(sceneRef.current?.getStats() ?? null);
+      setLiveRms(overrideRef.current?.speech?.rms ?? audioPlaybackService.getSnapshot().rms);
+    }, 250);
     return () => window.clearInterval(id);
   }, [statsVisible]);
 
@@ -328,7 +332,7 @@ export function WintermuteCanvas(): JSX.Element {
         >
           {`${stats.fps.toFixed(0)} fps  ${stats.width}x${stats.height}@${stats.pixelRatio}x  `
             + `frames ${stats.frames}${stats.paused ? '  paused' : ''}${stats.contextLost ? '  CONTEXT LOST' : ''}\n`
-            + `state ${effectiveFrame.state}  rms ${effectiveFrame.speech.rms.toFixed(2)}`
+            + `state ${effectiveFrame.state}  rms ${liveRms.toFixed(2)}`
             + `${effectiveFrame.reducedMotion ? '  reduced-motion' : ''}`}
         </pre>
       )}

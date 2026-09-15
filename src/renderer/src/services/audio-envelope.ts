@@ -20,10 +20,17 @@ export interface EnvelopeConfig {
   releaseMs: number;
 }
 
+/**
+ * Calibrated 2026-09-15 against the sherpa-onnx Piper voice through the
+ * Open-LLM-VTuber backend: its `volumes` are normalised per sentence
+ * (max = 1.0, mean ≈ 0.30–0.34, p50 ≈ 0.27–0.29, p90 ≈ 0.64–0.78). Unity
+ * gain keeps that dynamic range; the old 2.2 saturated everything above
+ * 0.47. The service logs n/mean/p50/p90/max per sentence for re-checks.
+ */
 export const DEFAULT_ENVELOPE_CONFIG: EnvelopeConfig = {
-  noiseGate: 0.015,
-  gain: 2.2,
-  gamma: 0.72,
+  noiseGate: 0.05,
+  gain: 1.05,
+  gamma: 0.8,
   attackMs: 45,
   releaseMs: 170,
 };

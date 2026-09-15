@@ -91,6 +91,16 @@ interface ActiveEntry {
 
 const IDLE_PLAYBACK_STATE: PlaybackState = { isPlaying: false, sequence: 0 };
 
+/** " n=.. mean=.. p50=.. p90=.. max=.." for calibration logs. */
+export function describeVolumes(volumes: number[] | undefined): string {
+  if (!volumes || volumes.length === 0) return '';
+  const sorted = volumes.filter((v) => Number.isFinite(v)).slice().sort((a, b) => a - b);
+  if (sorted.length === 0) return '';
+  const pick = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+  const mean = sorted.reduce((a, b) => a + b, 0) / sorted.length;
+  return ` n=${sorted.length} mean=${mean.toFixed(3)} p50=${pick(0.5).toFixed(3)} p90=${pick(0.9).toFixed(3)} max=${sorted[sorted.length - 1].toFixed(3)}`;
+}
+
 function safely(label: string, fn: () => void): void {
   try {
     fn();
@@ -134,6 +144,9 @@ export class AudioPlaybackService {
   private analyser: AnalyserNode | null = null;
 
   private analyserBuffer: Float32Array | null = null;
+
+  /** Diagnostic summary of the last sentence's backend volumes. */
+  private lastVolumeStats = '';
 
   // ---------------------------------------------------------------- public
 
@@ -297,6 +310,7 @@ export class AudioPlaybackService {
     s.rawMax = 0;
     s.segmentIndex = -1;
     s.source = this.envelopeSourceFor(entry);
+    this.lastVolumeStats = describeVolumes(entry.request.volumes);
     this.playbackState = { isPlaying: true, sequence: entry.sequence };
     this.notify();
   }
@@ -304,7 +318,7 @@ export class AudioPlaybackService {
   private publishIdle(): void {
     const s = this.snapshot;
     if (s.source !== 'none' && s.rawMax > 0) {
-      console.debug(`[audio-playback] sentence ${s.sequence} envelope source=${s.source} rawMax=${s.rawMax.toFixed(4)}`);
+      console.debug(`[audio-playback] sentence ${s.sequence} envelope source=${s.source} rawMax=${s.rawMax.toFixed(4)}${this.lastVolumeStats}`);
     }
     s.isPlaying = false;
     s.currentTimeSec = 0;
