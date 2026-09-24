@@ -19,7 +19,9 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: 'npx vite preview --config vite.config.ts --mode web --port 4173 --strictPort',
+    // --host: vite binds 'localhost', which resolves to ::1 only on this Node, so
+    // 127.0.0.1 never answered and the server always timed out.
+    command: 'npx vite preview --config vite.config.ts --mode web --host 127.0.0.1 --port 4173 --strictPort',
     url: 'http://127.0.0.1:4173/index.html',
     reuseExistingServer: true,
     timeout: 30_000,

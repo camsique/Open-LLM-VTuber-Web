@@ -44,6 +44,9 @@ const createConfig = async (outDir: string) => ({
     },
   },
   root: path.join(__dirname, "src/renderer"),
+  // Read .env / .env.local from the repo root (like the Electron build), not from
+  // src/renderer, so VITE_VESSEL_* reach the web bundle too.
+  envDir: __dirname,
   publicDir: path.join(__dirname, "src/renderer/public"),
   base: "./",
   server: {
