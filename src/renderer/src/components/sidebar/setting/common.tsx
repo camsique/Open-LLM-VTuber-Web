@@ -85,6 +85,7 @@ interface InputFieldProps {
   value: string
   onChange: (value: string) => void
   placeholder?: string
+  help?: string
 }
 
 // Reusable Components
@@ -185,11 +186,17 @@ export function InputField({
   value,
   onChange,
   placeholder,
+  help,
 }: InputFieldProps): JSX.Element {
   return (
     <Field
       {...settingStyles.general.field}
-      label={<Text {...settingStyles.general.field.label}>{label}</Text>}
+      label={
+        <Flex align="center">
+          <Text {...settingStyles.general.field.label}>{label}</Text>
+          {help && <HelpIcon content={help} />}
+        </Flex>
+      }
     >
       <Input
         {...settingStyles.general.input}

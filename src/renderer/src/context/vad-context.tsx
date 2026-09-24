@@ -8,7 +8,7 @@ import { useInterrupt } from '@/components/canvas/live2d';
 import { audioTaskQueue } from '@/utils/task-queue';
 import { useSendAudio } from '@/hooks/utils/use-send-audio';
 import { SubtitleContext } from './subtitle-context';
-import { AiStateContext } from './ai-state-context';
+import { AiStateContext, AiState } from './ai-state-context';
 import { useLocalStorage } from '@/hooks/utils/use-local-storage';
 import { toaster } from '@/components/ui/toaster';
 
@@ -108,7 +108,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
   // Refs for VAD instance and state
   const vadRef = useRef<MicVAD | null>(null);
   const previousTriggeredProbabilityRef = useRef(0);
-  const previousAiStateRef = useRef<string>('idle');
+  const previousAiStateRef = useRef<AiState>('idle');
 
   // Persistent state management
   const [micOn, setMicOn] = useLocalStorage('micOn', DEFAULT_VAD_STATE.micOn);
@@ -144,7 +144,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
   // Refs for callback stability
   const interruptRef = useRef(interrupt);
   const sendAudioPartitionRef = useRef(sendAudioPartition);
-  const aiStateRef = useRef<string>(aiState);
+  const aiStateRef = useRef<AiState>(aiState);
   const setSubtitleTextRef = useRef(setSubtitleText);
   const setAiStateRef = useRef(setAiState);
 
@@ -195,21 +195,25 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
    * Handle speech start event (initial detection)
    */
   const handleSpeechStart = useCallback(() => {
-    console.log('Speech started - entering listening state');
-    // Save current AI state before changing to listening
+    console.log('Speech started - saving current state');
+    // Save current AI state but DON'T change to listening yet
     previousAiStateRef.current = aiStateRef.current;
     isProcessingRef.current = true;
-    setAiStateRef.current('listening');
+    // Don't change state here - wait for onSpeechRealStart
   }, []);
 
   /**
    * Handle real speech start event (confirmed speech)
    */
   const handleSpeechRealStart = useCallback(() => {
-    console.log('Real speech confirmed - interrupting AI if needed');
-    if (aiStateRef.current === 'thinking-speaking') {
+    console.log('Real speech confirmed - checking if need to interrupt');
+    // Check if we need to interrupt based on the PREVIOUS state (before speech started)
+    if (previousAiStateRef.current === 'thinking-speaking') {
+      console.log('Interrupting AI speech due to user speaking');
       interruptRef.current();
     }
+    // Now change to listening state
+    setAiStateRef.current('listening');
   }, []);
 
   /**
@@ -238,6 +242,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
     setPreviousTriggeredProbability(0);
     sendAudioPartitionRef.current(audio);
     isProcessingRef.current = false;
+    setAiStateRef.current("thinking-speaking");
   }, []);
 
   /**

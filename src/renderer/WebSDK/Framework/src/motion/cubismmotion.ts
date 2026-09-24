@@ -14,6 +14,7 @@ import { csmVector } from '../type/csmvector';
 import {
   CSM_ASSERT,
   CubismLogDebug,
+  CubismLogError,
   CubismLogWarning
 } from '../utils/cubismdebug';
 import { ACubismMotion, FinishedMotionCallback } from './acubismmotion';
@@ -254,14 +255,26 @@ export class CubismMotion extends ACubismMotion {
   ): CubismMotion {
     const ret = new CubismMotion();
 
-    ret.parse(buffer, size);
-    ret._sourceFrameRate = ret._motionData.fps;
-    ret._loopDurationSeconds = ret._motionData.duration;
-    ret._onFinishedMotion = onFinishedMotionHandler;
+    try {
+      ret.parse(buffer, size);
 
-    // NOTE: Editorではループありのモーション書き出しは非対応
-    // ret->_loop = (ret->_motionData->Loop > 0);
-    return ret;
+      // Check if motion data was successfully parsed
+      if (!ret._motionData) {
+        CubismLogError('Failed to parse motion data - motion data is null');
+        return null;
+      }
+
+      ret._sourceFrameRate = ret._motionData.fps;
+      ret._loopDurationSeconds = ret._motionData.duration;
+      ret._onFinishedMotion = onFinishedMotionHandler;
+
+      // NOTE: Editorではループありのモーション書き出しは非対応
+      // ret->_loop = (ret->_motionData->Loop > 0);
+      return ret;
+    } catch (error) {
+      CubismLogError(`Failed to create motion: ${error}`);
+      return null;
+    }
   }
 
   /**
@@ -767,13 +780,51 @@ export class CubismMotion extends ACubismMotion {
       CubismMotionCurve,
       true
     );
+
+    // Pre-calculate actual required sizes by analyzing the motion data
+    let totalRequiredSegments = 0;
+    let totalRequiredPoints = 0;
+
+    for (let curveCount = 0; curveCount < this._motionData.curveCount; ++curveCount) {
+      const segmentCount = json.getMotionCurveSegmentCount(curveCount);
+
+      for (let segmentPos = 0; segmentPos < segmentCount; ) {
+        totalRequiredSegments++;
+
+        if (segmentPos == 0) {
+          totalRequiredPoints += 1; // First point
+          segmentPos += 2;
+        } else {
+          const segmentType: CubismMotionSegmentType = json.getMotionCurveSegment(curveCount, segmentPos);
+
+          switch (segmentType) {
+            case CubismMotionSegmentType.CubismMotionSegmentType_Linear:
+            case CubismMotionSegmentType.CubismMotionSegmentType_Stepped:
+            case CubismMotionSegmentType.CubismMotionSegmentType_InverseStepped:
+              totalRequiredPoints += 1;
+              segmentPos += 3;
+              break;
+            case CubismMotionSegmentType.CubismMotionSegmentType_Bezier:
+              totalRequiredPoints += 3;
+              segmentPos += 7;
+              break;
+            default:
+              segmentPos += 3; // Default fallback
+              totalRequiredPoints += 1;
+              break;
+          }
+        }
+      }
+    }
+
+    // Use the calculated sizes (with a small buffer for safety)
     this._motionData.segments.updateSize(
-      json.getMotionTotalSegmentCount(),
+      totalRequiredSegments,
       CubismMotionSegment,
       true
     );
     this._motionData.points.updateSize(
-      json.getMotionTotalPointCount(),
+      totalRequiredPoints,
       CubismMotionPoint,
       true
     );
@@ -858,6 +909,13 @@ export class CubismMotion extends ACubismMotion {
               CubismMotionSegmentType.CubismMotionSegmentType_Linear;
             this._motionData.segments.at(totalSegmentCount).evaluate =
               linearEvaluate;
+
+            // Check if we have enough points in the array, expand if needed
+            if (totalPointCount >= this._motionData.points.getSize()) {
+              const newSize = Math.max(totalPointCount + 1, this._motionData.points.getSize() * 2);
+              CubismLogWarning(`Expanding motion points array from ${this._motionData.points.getSize()} to ${newSize} for Linear segment`);
+              this._motionData.points.updateSize(newSize, CubismMotionPoint, true);
+            }
 
             this._motionData.points.at(totalPointCount).time =
               json.getMotionCurveSegment(curveCount, segmentPosition + 1);

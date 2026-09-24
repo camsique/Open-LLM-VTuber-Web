@@ -168,6 +168,7 @@ function General({ onSave, onCancel }: GeneralProps): JSX.Element {
             handleSettingChange("imageCompressionQuality", settings.imageCompressionQuality);
           }
         }}
+        help={t("settings.general.imageCompressionQualityHelp")}
       />
 
       <InputField
@@ -175,12 +176,13 @@ function General({ onSave, onCancel }: GeneralProps): JSX.Element {
         value={settings.imageMaxWidth.toString()}
         onChange={(value) => {
           const maxWidth = parseInt(value as string, 10);
-          if (!Number.isNaN(maxWidth) && maxWidth > 0) {
+          if (!Number.isNaN(maxWidth) && maxWidth >= 0) {
             handleSettingChange("imageMaxWidth", maxWidth);
           } else if (value === "") {
             handleSettingChange("imageMaxWidth", settings.imageMaxWidth);
           }
         }}
+        help={t("settings.general.imageMaxWidthHelp")}
       />
     </Stack>
   );

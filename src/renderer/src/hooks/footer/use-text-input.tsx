@@ -10,7 +10,7 @@ export function useTextInput() {
   const [inputText, setInputText] = useState('');
   const [isComposing, setIsComposing] = useState(false);
   const wsContext = useWebSocket();
-  const { aiState, setAiState } = useAiState();
+  const { aiState } = useAiState();
   const { interrupt } = useInterrupt();
   const { appendHumanMessage } = useChatHistory();
   const { stopMic, autoStopMic } = useVAD();
@@ -35,7 +35,6 @@ export function useTextInput() {
       images,
     });
 
-    setAiState('thinking-speaking');
     if (autoStopMic) stopMic();
     setInputText('');
   };

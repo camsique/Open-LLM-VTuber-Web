@@ -45,7 +45,7 @@ export function useMediaCapture() {
     const storedMaxWidth = localStorage.getItem(IMAGE_MAX_WIDTH_KEY);
     if (storedMaxWidth) {
       const maxWidth = parseInt(storedMaxWidth, 10);
-      if (!Number.isNaN(maxWidth) && maxWidth > 0) {
+      if (!Number.isNaN(maxWidth) && maxWidth >= 0) {
         return maxWidth;
       }
     }
@@ -71,7 +71,7 @@ export function useMediaCapture() {
       let { width, height } = bitmap;
 
       const maxWidth = getImageMaxWidth();
-      if (width > maxWidth) {
+      if (maxWidth > 0 && width > maxWidth) {
         height = (maxWidth / width) * height;
         width = maxWidth;
       }
@@ -84,7 +84,7 @@ export function useMediaCapture() {
         return null;
       }
 
-      ctx.drawImage(bitmap, 0, 0);
+      ctx.drawImage(bitmap, 0, 0, width, height);
       const quality = getCompressionQuality();
       return canvas.toDataURL('image/jpeg', quality);
     } catch (error) {

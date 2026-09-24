@@ -406,6 +406,129 @@ export const useLive2DModel = ({
     }
   }, [isPet, electronApi]);
 
+  // Expose motion debugging functions to window for console testing
+  useEffect(() => {
+    const playMotion = (motionGroup: string, motionIndex: number = 0, priority: number = 3) => {
+      const adapter = (window as any).getLAppAdapter?.();
+      if (!adapter) {
+        console.error('Live2D adapter not available');
+        return false;
+      }
+
+      const model = adapter.getModel();
+      if (!model) {
+        console.error('Live2D model not available');
+        return false;
+      }
+
+      try {
+        console.log(`Playing motion: group="${motionGroup}", index=${motionIndex}, priority=${priority}`);
+        const result = model.startMotion(motionGroup, motionIndex, priority);
+        console.log('Motion start result:', result);
+        return result;
+      } catch (error) {
+        console.error('Error playing motion:', error);
+        return false;
+      }
+    };
+
+    const playRandomMotion = (motionGroup: string, priority: number = 3) => {
+      const adapter = (window as any).getLAppAdapter?.();
+      if (!adapter) {
+        console.error('Live2D adapter not available');
+        return false;
+      }
+
+      const model = adapter.getModel();
+      if (!model) {
+        console.error('Live2D model not available');
+        return false;
+      }
+
+      try {
+        console.log(`Playing random motion from group: "${motionGroup}", priority=${priority}`);
+        const result = model.startRandomMotion(motionGroup, priority);
+        console.log('Random motion start result:', result);
+        return result;
+      } catch (error) {
+        console.error('Error playing random motion:', error);
+        return false;
+      }
+    };
+
+    const getMotionInfo = () => {
+      const adapter = (window as any).getLAppAdapter?.();
+      if (!adapter) {
+        console.error('Live2D adapter not available');
+        return null;
+      }
+
+      const model = adapter.getModel();
+      if (!model) {
+        console.error('Live2D model not available');
+        return null;
+      }
+
+      try {
+        const motionGroups = [];
+        const setting = model._modelSetting;
+        if (setting) {
+          // Get all motion groups
+          const groups = setting._json?.FileReferences?.Motions;
+          if (groups) {
+            for (const groupName in groups) {
+              const motions = groups[groupName];
+              motionGroups.push({
+                name: groupName,
+                count: motions.length,
+                motions: motions.map((motion: any, index: number) => ({
+                  index,
+                  file: motion.File
+                }))
+              });
+            }
+          }
+        }
+        
+        console.log('Available motion groups:', motionGroups);
+        return motionGroups;
+      } catch (error) {
+        console.error('Error getting motion info:', error);
+        return null;
+      }
+    };
+
+    // Expose to window for console access
+    (window as any).Live2DDebug = {
+      playMotion,
+      playRandomMotion,
+      getMotionInfo,
+      // Helper functions
+      help: () => {
+        console.log(`
+Live2D Motion Debug Functions:
+- Live2DDebug.getMotionInfo() - Get all available motion groups and their motions
+- Live2DDebug.playMotion(group, index, priority) - Play specific motion
+- Live2DDebug.playRandomMotion(group, priority) - Play random motion from group  
+- Live2DDebug.help() - Show this help
+
+Example usage:
+Live2DDebug.getMotionInfo()  // See available motions
+Live2DDebug.playMotion("", 0)  // Play first motion from default group
+Live2DDebug.playRandomMotion("")  // Play random motion from default group
+        `);
+      }
+    };
+
+    console.log('Live2D Debug functions exposed to window.Live2DDebug');
+    console.log('Type Live2DDebug.help() for usage information');
+
+    // Cleanup function
+    return () => {
+      delete (window as any).Live2DDebug;
+    };
+  }, []);
+
   return {
     position,
     isDragging,
