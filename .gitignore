@@ -63,3 +63,6 @@ out
 screenshots/
 test-results/
 playwright-report/
+
+# local build configuration
+.env.local

@@ -3,8 +3,13 @@ import React, { useContext, useCallback } from 'react';
 import { wsService } from '@/services/websocket-service';
 import { useLocalStorage } from '@/hooks/utils/use-local-storage';
 
-const DEFAULT_WS_URL = 'wss://YOUR-HOST.ts.net:8443/client-ws';
-const DEFAULT_BASE_URL = 'https://YOUR-HOST.ts.net:8443';
+// Server location is set at build time so no deployment's hostname is baked into
+// the source. Copy .env.example to .env.local and set these; the fallbacks suit a
+// server running on the same machine.
+const DEFAULT_WS_URL =
+  import.meta.env.VITE_VESSEL_WS_URL ?? 'ws://127.0.0.1:12393/client-ws';
+const DEFAULT_BASE_URL =
+  import.meta.env.VITE_VESSEL_BASE_URL ?? 'http://127.0.0.1:12393';
 
 export interface HistoryInfo {
   uid: string;
