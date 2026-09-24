@@ -40,10 +40,10 @@ dmg:
   artifactName: ${name}-${version}.${ext}
   writeUpdateInfo: false
 linux:
+  # AppImage only: the snap and deb targets need snapcraft / Debian packaging
+  # tooling (fpm's bundled ruby wants libcrypt.so.1) and failed the whole build.
   target:
     - AppImage
-    - snap
-    - deb
   maintainer: electronjs.org
   category: Utility
 appImage:

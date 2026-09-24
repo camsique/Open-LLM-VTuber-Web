@@ -2,8 +2,8 @@
 
 A shader-driven Three.js orb that replaces the Live2D look of the avatar:
 a calm dark-glass sphere with one band of ice-blue light. Live2D stays in
-the app as a selectable fallback. Design brief and architecture spec live
-outside this repo (`~/ai/wintermute-vessel/`).
+the app as a selectable fallback. The design brief and architecture spec live
+in the deployment's own (private) repository, not here.
 
 ## Selecting the renderer
 
@@ -113,26 +113,26 @@ viewports, config sliders, screenshot.
 ## Pet mode
 
 The orb lives in a `pet.sizePx` square that can be dragged anywhere in the
-transparent full-screen window (position persisted in
+transparent window, which spans all connected displays (position persisted in
 `localStorage.wintermutePetPosition`). Hovering the orb (not the square)
 reports `update-component-hover('wintermute-orb', …)` so the main process
 stops ignoring the mouse, exactly like the Live2D hit test; right-click
 opens the tray menu. **Linux caveat:** Electron's click-through `forward`
 option is macOS/Windows only, so once the window ignores the mouse the
 renderer receives no `mousemove` and cannot re-enable itself; verify on
-the target machine (see `~/ai/wintermute-vessel/DECISIONS.md`).
+the target machine.
 
 ## Commands
 
 ```bash
-npm run typecheck          # upstream has 584 pre-existing errors (580 in WebSDK); gate = no new ones under src/renderer/src
+npm run typecheck          # upstream has pre-existing errors (mostly vendored WebSDK); gate = no new ones under src/renderer/src
 npm test                   # vitest: envelope, playback service, config, motion, state adapter (68 tests)
 npm run build:web          # dist/web
 npm run test:visual        # Playwright, needs build:web; software GL; snapshots in tests/visual/__snapshots__
 npm run test:visual:update # refresh snapshots after an intentional look change
 node scripts/wintermute-screenshots.mjs   # every state → screenshots/wintermute/
 node scripts/wintermute-e2e.mjs [wintermute|live2d] "message"   # against a backend on :12393
-npx electron-vite build && npx electron-builder --linux AppImage # deb needs Debian tooling (fpm/libcrypt)
+npm run build:linux       # AppImage in release/<version>/ (the only Linux target)
 ```
 
 ## Known limitations
