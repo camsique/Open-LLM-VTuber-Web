@@ -154,6 +154,7 @@ npm run test:visual:update # refresh snapshots after an intentional look change
 node scripts/wintermute-screenshots.mjs   # every state → screenshots/wintermute/
 node scripts/wintermute-e2e.mjs [wintermute|live2d] "message"   # against a backend on :12393
 npm run build:linux       # AppImage in release/<version>/ (the only Linux target)
+npm run build:win:zip     # Windows x64 zip, cross-built on Linux: unsigned, no installer, no Wine needed
 ```
 
 ## Known limitations
