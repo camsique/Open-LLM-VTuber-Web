@@ -17,7 +17,8 @@ import { CharacterConfigProvider } from "./context/character-config-context";
 import { Toaster } from "./components/ui/toaster";
 import { VADProvider } from "./context/vad-context";
 import { AvatarSurface } from "./components/avatar/avatar-surface";
-import { AvatarConfigProvider } from "./context/avatar-config-context";
+import { CompactPetLayout } from "./components/avatar/compact-pet-layout";
+import { AvatarConfigProvider, useAvatarConfig } from "./context/avatar-config-context";
 import TitleBar from "./components/electron/title-bar";
 import { InputSubtitle } from "./components/electron/input-subtitle";
 import { ProactiveSpeakProvider } from "./context/proactive-speak-context";
@@ -39,6 +40,9 @@ function AppContent(): JSX.Element {
   const { mode } = useMode();
   const isElectron = window.api !== undefined;
   const avatarContainerRef = useRef<HTMLDivElement>(null);
+  const { renderer } = useAvatarConfig();
+  // The orb's pet mode is a small window holding only the orb + input box.
+  const compactPet = mode === "pet" && isElectron && renderer === "wintermute";
 
   useEffect(() => {
     const handleResize = () => {
@@ -96,16 +100,20 @@ function AppContent(): JSX.Element {
 
   return (
     <>
-      <Box
-        ref={avatarContainerRef}
-        // Apply styles conditionally based on mode
-        // Use the function to get dynamic responsive styles for window mode
-        {...(mode === "window"
-          ? getResponsiveAvatarWindowStyle(showSidebar)
-          : avatarPetStyle)}
-      >
-        <AvatarSurface />
-      </Box>
+      {compactPet ? (
+        <CompactPetLayout />
+      ) : (
+        <Box
+          ref={avatarContainerRef}
+          // Apply styles conditionally based on mode
+          // Use the function to get dynamic responsive styles for window mode
+          {...(mode === "window"
+            ? getResponsiveAvatarWindowStyle(showSidebar)
+            : avatarPetStyle)}
+        >
+          <AvatarSurface />
+        </Box>
+      )}
 
       {/* Conditional Rendering of Window UI */}
       {mode === "window" && (
@@ -153,7 +161,7 @@ function AppContent(): JSX.Element {
       )}
 
       {/* Conditional Rendering of Pet Mode UI */}
-      {mode === "pet" && <InputSubtitle />}
+      {mode === "pet" && !compactPet && <InputSubtitle />}
     </>
   );
 }

@@ -58,8 +58,10 @@ export interface WintermuteConfig {
     edgeFade: number;
   };
   pet: {
-    /** Square size of the orb box in pet mode, CSS px. */
+    /** Square size of the orb slot in the pet window, CSS px. */
     sizePx: number;
+    /** Fraction of that square the orb fills (the window hugs the orb). */
+    viewportFill: number;
   };
 }
 
@@ -114,6 +116,7 @@ export const DEFAULT_WINTERMUTE_CONFIG: WintermuteConfig = {
   },
   pet: {
     sizePx: 240,
+    viewportFill: 0.9,
   },
 };
 
@@ -239,6 +242,23 @@ export function validateWintermuteConfig(
     },
     pet: {
       sizePx: int(pet.sizePx, base.pet.sizePx, L.petSizePx.min, L.petSizePx.max),
+      viewportFill: num(pet.viewportFill, base.pet.viewportFill, 0.5, 0.98),
+    },
+  };
+}
+
+/**
+ * Config the scene should use. In pet mode the orb fills most of its square
+ * slot and sits centred in it, so the small pet window hugs the orb.
+ */
+export function sceneConfigFor(config: WintermuteConfig, isPet: boolean): WintermuteConfig {
+  if (!isPet) return config;
+  return {
+    ...config,
+    geometry: {
+      ...config.geometry,
+      viewportFill: config.pet.viewportFill,
+      verticalOffset: 0,
     },
   };
 }

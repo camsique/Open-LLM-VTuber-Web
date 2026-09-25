@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_WINTERMUTE_CONFIG,
   WINTERMUTE_LIMITS,
+  sceneConfigFor,
   validateWintermuteConfig,
 } from '../wintermute-config';
 
@@ -58,5 +59,22 @@ describe('validateWintermuteConfig', () => {
     const before = JSON.stringify(DEFAULT_WINTERMUTE_CONFIG);
     validateWintermuteConfig({ band: { height: 0.1 } });
     expect(JSON.stringify(DEFAULT_WINTERMUTE_CONFIG)).toBe(before);
+  });
+});
+
+describe('pet mode config', () => {
+  it('clamps the pet fill', () => {
+    expect(validateWintermuteConfig({ pet: { viewportFill: 2 } }).pet.viewportFill).toBe(0.98);
+    expect(validateWintermuteConfig({ pet: { viewportFill: 0.1 } }).pet.viewportFill).toBe(0.5);
+  });
+
+  it('centres the orb and uses the pet fill only in pet mode', () => {
+    const cfg = DEFAULT_WINTERMUTE_CONFIG;
+    expect(sceneConfigFor(cfg, false)).toBe(cfg);
+    const pet = sceneConfigFor(cfg, true);
+    expect(pet.geometry.viewportFill).toBe(cfg.pet.viewportFill);
+    expect(pet.geometry.verticalOffset).toBe(0);
+    expect(pet.band).toBe(cfg.band);
+    expect(cfg.geometry.verticalOffset).toBe(DEFAULT_WINTERMUTE_CONFIG.geometry.verticalOffset);
   });
 });

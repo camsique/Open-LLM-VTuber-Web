@@ -63,6 +63,16 @@ const api = {
     ipcRenderer.send('pre-mode-changed', mode);
   },
   getConfigFiles: () => ipcRenderer.invoke('get-config-files'),
+  // Compact pet window (Wintermute orb)
+  setPetShell: (shell: 'overlay' | 'compact') => {
+    ipcRenderer.send('pet-shell', shell);
+  },
+  setPetCompactSize: (width: number, height: number) => {
+    ipcRenderer.send('pet-compact-size', width, height);
+  },
+  petDrag: (phase: 'start' | 'move' | 'end', screenX?: number, screenY?: number) => {
+    ipcRenderer.send('pet-drag', phase, screenX, screenY);
+  },
   updateConfigFiles: (files: ConfigFile[]) => {
     ipcRenderer.send('update-config-files', files);
   },

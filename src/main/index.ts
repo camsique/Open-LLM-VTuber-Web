@@ -1,5 +1,7 @@
 /* eslint-disable no-shadow */
-import { app, ipcMain, globalShortcut, desktopCapturer } from "electron";
+import {
+  app, ipcMain, globalShortcut, desktopCapturer, screen,
+} from "electron";
 import { electronApp, optimizer } from "@electron-toolkit/utils";
 import { WindowManager } from "./window-manager";
 import { MenuManager } from "./menu-manager";
@@ -67,6 +69,22 @@ function setupIPC(): void {
     menuManager.updateConfigFiles(files);
   });
 
+  // Compact pet window (Wintermute orb): shell choice, measured size, drag.
+  ipcMain.on("pet-shell", (_event, shell: unknown) => {
+    if (shell === "compact" || shell === "overlay") {
+      windowManager.setPetShell(shell);
+      menuManager.setCompactPet(shell === "compact");
+    }
+  });
+
+  ipcMain.on("pet-compact-size", (_event, width: unknown, height: unknown) => {
+    windowManager.setCompactSize(width, height);
+  });
+
+  ipcMain.on("pet-drag", (_event, phase: unknown, screenX: unknown, screenY: unknown) => {
+    windowManager.petDrag(phase, screenX, screenY);
+  });
+
   ipcMain.handle('get-screen-capture', async () => {
     const sources = await desktopCapturer.getSources({ types: ['screen'] });
     return sources[0].id;
@@ -110,6 +128,10 @@ app.whenReady().then(() => {
   // }
 
   setupIPC();
+
+  const onDisplaysChanged = () => windowManager.onDisplaysChanged();
+  screen.on("display-removed", onDisplaysChanged);
+  screen.on("display-metrics-changed", onDisplaysChanged);
 
   app.on("activate", () => {
     const window = windowManager.getWindow();

@@ -1,0 +1,18 @@
+{
+  // Upstream's typecheck:node only covers vite.config.ts, so the Electron main
+  // process was never type-checked. This covers it, strictly.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src/main/**/*.ts"],
+  "exclude": ["src/main/**/__tests__/**"]
+}

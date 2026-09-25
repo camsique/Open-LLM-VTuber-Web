@@ -17,7 +17,21 @@ import { useDraggable } from '@/hooks/electron/use-draggable';
 import { inputSubtitleStyles } from './electron-style';
 import { useMode } from '@/context/mode-context';
 
-export function InputSubtitle() {
+interface InputSubtitleProps {
+  /** Docked under the orb in the compact pet window: static, not draggable. */
+  docked?: boolean;
+}
+
+const DOCKED_CONTAINER = {
+  position: 'relative' as const,
+  bottom: 'auto',
+  left: 'auto',
+  transform: 'none',
+  mt: '4px',
+  zIndex: 'auto',
+};
+
+export function InputSubtitle({ docked = false }: InputSubtitleProps = {}) {
   const {
     inputValue,
     handleInputChange,
@@ -90,10 +104,12 @@ export function InputSubtitle() {
     <Box
       ref={elementRef}
       {...inputSubtitleStyles.container}
-      {...inputSubtitleStyles.draggableContainer(isDragging)}
-      onMouseDown={handleMouseDown}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      {...(docked ? DOCKED_CONTAINER : inputSubtitleStyles.draggableContainer(isDragging))}
+      {...(docked ? {} : {
+        onMouseDown: handleMouseDown,
+        onMouseEnter: handleMouseEnter,
+        onMouseLeave: handleMouseLeave,
+      })}
     >
       <Box {...inputSubtitleStyles.box}>
         <IconButton

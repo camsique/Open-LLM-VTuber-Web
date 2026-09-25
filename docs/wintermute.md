@@ -112,21 +112,42 @@ viewports, config sliders, screenshot.
 
 ## Pet mode
 
-The orb lives in a `pet.sizePx` square that can be dragged anywhere in the
-transparent window, which spans all connected displays (position persisted in
-`localStorage.wintermutePetPosition`). Hovering the orb (not the square)
-reports `update-component-hover('wintermute-orb', …)` so the main process
-stops ignoring the mouse, exactly like the Live2D hit test; right-click
-opens the tray menu. **Linux caveat:** Electron's click-through `forward`
-option is macOS/Windows only, so once the window ignores the mouse the
-renderer receives no `mousemove` and cannot re-enable itself; verify on
-the target machine.
+With the Wintermute renderer, pet mode is a **compact window**: small,
+borderless, transparent, always on top, holding only the orb and — when shown
+— the input box docked below it. It is never click-through, so it behaves the
+same on Windows, X11 and XWayland. (Upstream's pet mode is a full-screen
+click-through overlay that re-enables the mouse on hover; that needs
+`setIgnoreMouseEvents(…, { forward: true })`, which Electron supports only on
+macOS and Windows, so on Linux the avatar could never be clicked. Live2D still
+uses that overlay.)
+
+- Enter: sidebar → layers icon "Change Mode" → Pet Mode, or tray / right-click
+  menu → Pet Mode. Leave: right-click the orb → Window Mode (or the tray).
+- Drag the orb to move the window, across monitors too; the position is kept
+  in `<userData>/wintermute-pet-window.json` and clamped back on screen if a
+  monitor disappears. First placement: bottom-right of the primary display.
+- The window is sized to its content (`pet.sizePx` square for the orb, which
+  fills `pet.viewportFill` of it, plus the input box) and grows/shrinks around
+  the orb's top-centre when the input box is toggled (right-click → Toggle
+  InputBox and Subtitle, or its ✕).
+- "Toggle Mouse Passthrough" is hidden: there is nothing to pass through to.
+- **Wayland:** keep the app on X11/XWayland. Electron ≤ 37 does that by
+  default; Electron 38+ defaults to native Wayland, where always-on-top and
+  window positioning are not available — pass `--ozone-platform=x11` if the
+  Electron version is ever raised.
+
+Main process: `src/main/window-manager.ts` (`PetShell`, `applyCompactPet`,
+`setCompactSize`, `petDrag`), pure geometry in `src/main/pet-geometry.ts`.
+Renderer: `components/avatar/compact-pet-layout.tsx`, the pet part of
+`wintermute-canvas.tsx`, `InputSubtitle docked`.
 
 ## Commands
 
 ```bash
 npm run typecheck          # upstream has pre-existing errors (mostly vendored WebSDK); gate = no new ones under src/renderer/src
-npm test                   # vitest: envelope, playback service, config, motion, state adapter (68 tests)
+npm test                   # vitest: envelope, playback, config, motion, state adapter, pet geometry
+npm run typecheck:main     # Electron main process (upstream never checked it)
+npm run test:electron      # the real app's pet window; needs an X display (Xvfb :97 + DISPLAY=:97 works)
 npm run build:web          # dist/web
 npm run test:visual        # Playwright, needs build:web; software GL; snapshots in tests/visual/__snapshots__
 npm run test:visual:update # refresh snapshots after an intentional look change
@@ -145,7 +166,8 @@ npm run build:linux       # AppImage in release/<version>/ (the only Linux targe
   `volumes`; it is skipped while the AudioContext is not running so speech
   is never muted by autoplay policy.
 - ESLint upstream is broken (missing `airbnb` config), so lint is not run.
-- Pet-mode click-through on Linux: see above.
+- Pet window corners and the strips beside the orb (when the input box is
+  shown) catch clicks; the window is rectangular.
 
 ## Rebasing onto future upstream
 

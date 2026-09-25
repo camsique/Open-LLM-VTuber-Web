@@ -17,6 +17,9 @@ export class MenuManager {
 
   private configFiles: ConfigFile[] = [];
 
+  /** In the compact pet window there is nothing to pass clicks through to. */
+  private compactPet = false;
+
   constructor(private onModeChange: (mode: 'window' | 'pet') => void) {
     this.setupContextMenu();
   }
@@ -61,8 +64,8 @@ export class MenuManager {
     const contextMenu = Menu.buildFromTemplate([
       ...this.getModeMenuItems(),
       { type: 'separator' as const },
-      // Only show toggle mouse ignore in pet mode
-      ...(this.currentMode === 'pet'
+      // Only show toggle mouse ignore in the full-screen (overlay) pet mode
+      ...(this.currentMode === 'pet' && !this.compactPet
         ? [
           {
             label: 'Toggle Mouse Passthrough',
@@ -121,8 +124,8 @@ export class MenuManager {
         },
       },
       { type: 'separator' as const },
-      // Only show in pet mode
-      ...(this.currentMode === 'pet'
+      // Only show in the full-screen (overlay) pet mode
+      ...(this.currentMode === 'pet' && !this.compactPet
         ? [
           {
             label: 'Toggle Mouse Passthrough',
@@ -207,6 +210,12 @@ export class MenuManager {
   destroy(): void {
     this.tray?.destroy();
     this.tray = null;
+  }
+
+  setCompactPet(compact: boolean): void {
+    if (this.compactPet === compact) return;
+    this.compactPet = compact;
+    this.updateTrayMenu();
   }
 
   updateConfigFiles(files: ConfigFile[]): void {

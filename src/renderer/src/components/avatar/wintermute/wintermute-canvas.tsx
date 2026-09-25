@@ -3,20 +3,19 @@
  * React host for the Wintermute scene.
  *
  * Window mode: the orb fills the avatar container like Live2D did.
- * Pet mode: the orb lives in a small square box that can be dragged around
- * the transparent full-screen window; hovering the orb (not the box) asks
- * the main process to stop ignoring the mouse, mirroring the Live2D hit
- * test. Nothing here tracks the pointer outside the box.
+ * Pet mode: the app is a small always-on-top window (see main/window-manager
+ * 'compact' shell) and this component fills the orb slot at its top. A drag
+ * that starts on the orb moves the whole window through the main process;
+ * right-click opens the tray/context menu. The window is never click-through,
+ * so this works the same on Windows, X11 and XWayland.
  */
 import {
   useCallback, useEffect, useMemo, useRef, useState,
 } from 'react';
 import { useMode } from '@/context/mode-context';
-import { useForceIgnoreMouse } from '@/hooks/utils/use-force-ignore-mouse';
 import { useAvatarConfig } from '@/context/avatar-config-context';
 import { useVesselState } from '@/context/vessel-state-context';
 import { useReducedMotion } from '@/hooks/avatar/use-reduced-motion';
-import { useLocalStorage } from '@/hooks/utils/use-local-storage';
 import {
   WintermuteSceneHandle,
   WintermuteStats,
@@ -25,40 +24,24 @@ import {
 import { WintermuteFallback } from './wintermute-fallback';
 import { installWintermuteDebug, isWintermuteDebugEnabled } from './wintermute-debug';
 import type { VesselFrameInput } from './vessel-types';
+import { sceneConfigFor } from './wintermute-config';
 import { audioPlaybackService } from '@/services/audio-playback-service';
 
-const HOVER_COMPONENT_ID = 'wintermute-orb';
-const PET_POSITION_KEY = 'wintermutePetPosition';
-const PET_MARGIN_PX = 24;
-const PET_BOTTOM_MARGIN_PX = 120;
+/** Pixels the pointer must travel before a press on the orb becomes a drag. */
+const DRAG_THRESHOLD_PX = 3;
 
-interface PetPosition {
-  x: number;
-  y: number;
+interface PetBridge {
+  petDrag?: (phase: 'start' | 'move' | 'end', screenX?: number, screenY?: number) => void;
+  showContextMenu?: () => void;
 }
 
-function defaultPetPosition(sizePx: number): PetPosition {
-  const w = window.innerWidth || sizePx + PET_MARGIN_PX;
-  const h = window.innerHeight || sizePx + PET_BOTTOM_MARGIN_PX;
-  return {
-    x: Math.max(0, w - sizePx - PET_MARGIN_PX),
-    y: Math.max(0, h - sizePx - PET_BOTTOM_MARGIN_PX),
-  };
-}
-
-function clampPetPosition(pos: PetPosition, sizePx: number): PetPosition {
-  const maxX = Math.max(0, (window.innerWidth || sizePx) - sizePx);
-  const maxY = Math.max(0, (window.innerHeight || sizePx) - sizePx);
-  return {
-    x: Math.min(maxX, Math.max(0, pos.x)),
-    y: Math.min(maxY, Math.max(0, pos.y)),
-  };
+function petBridge(): PetBridge | undefined {
+  return window.api as unknown as PetBridge | undefined;
 }
 
 export function WintermuteCanvas(): JSX.Element {
   const { mode } = useMode();
   const isPet = mode === 'pet';
-  const { forceIgnoreMouse } = useForceIgnoreMouse();
   const {
     wintermuteConfig: config, patchWintermuteConfig, resetWintermuteConfig,
   } = useAvatarConfig();
@@ -68,8 +51,9 @@ export function WintermuteCanvas(): JSX.Element {
   const boxRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<WintermuteSceneHandle | null>(null);
-  const configRef = useRef(config);
-  configRef.current = config;
+  const sceneConfig = useMemo(() => sceneConfigFor(config, isPet), [config, isPet]);
+  const configRef = useRef(sceneConfig);
+  configRef.current = sceneConfig;
 
   const [failure, setFailure] = useState<string | null>(null);
   const [contextLost, setContextLost] = useState(false);
@@ -123,14 +107,12 @@ export function WintermuteCanvas(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    sceneRef.current?.setConfig(config);
-  }, [config]);
+    sceneRef.current?.setConfig(sceneConfig);
+  }, [sceneConfig]);
 
   useEffect(() => {
     sceneRef.current?.setInput(effectiveFrame);
   }, [effectiveFrame]);
-
-  // Pet-mode box size changes are picked up by the scene's ResizeObserver.
 
   // ---- debug API -----------------------------------------------------------
   const debugEnabled = useMemo(isWintermuteDebugEnabled, []);
@@ -159,129 +141,103 @@ export function WintermuteCanvas(): JSX.Element {
     return () => window.clearInterval(id);
   }, [statsVisible]);
 
-  // ---- pet mode: position, drag, hover ---------------------------------------
-  const sizePx = config.pet.sizePx;
-  const [storedPos, setStoredPos] = useLocalStorage<PetPosition | null>(PET_POSITION_KEY, null);
-  const posRef = useRef<PetPosition>(clampPetPosition(storedPos ?? defaultPetPosition(sizePx), sizePx));
-  const hoverRef = useRef(false);
-  const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number; moved: boolean } | null>(null);
-
-  const applyPosition = useCallback((pos: PetPosition) => {
-    posRef.current = pos;
-    const box = boxRef.current;
-    if (box) {
-      box.style.left = `${pos.x}px`;
-      box.style.top = `${pos.y}px`;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isPet) return undefined;
-    applyPosition(clampPetPosition(posRef.current, sizePx));
-    const onResize = () => applyPosition(clampPetPosition(posRef.current, sizePx));
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [isPet, sizePx, applyPosition]);
-
-  const reportHover = useCallback((hovering: boolean) => {
-    if (hoverRef.current === hovering) return;
-    hoverRef.current = hovering;
-    setIsHovering(hovering);
-    if (isPet) {
-      (window.api as { updateComponentHover?: (id: string, h: boolean) => void } | undefined)
-        ?.updateComponentHover?.(HOVER_COMPONENT_ID, hovering);
-    }
-  }, [isPet]);
-
-  useEffect(() => () => {
-    if (hoverRef.current) reportHover(false);
-  }, [reportHover]);
+  // ---- pet mode: hover cursor, window drag, context menu --------------------
+  const dragRef = useRef<{
+    startX: number; startY: number; moved: boolean; raf: number | null; lastX: number; lastY: number;
+  } | null>(null);
 
   const isInsideOrb = useCallback((clientX: number, clientY: number): boolean => {
     const box = boxRef.current;
     if (!box) return false;
     const rect = box.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2 - configRef.current.geometry.verticalOffset * rect.height * configRef.current.geometry.viewportFill / 2;
+    const cy = rect.top + rect.height / 2;
     const r = (Math.min(rect.width, rect.height) * configRef.current.geometry.viewportFill) / 2;
     const dx = clientX - cx;
     const dy = clientY - cy;
-    return dx * dx + dy * dy <= r * r * 1.1;
+    return dx * dx + dy * dy <= r * r;
   }, []);
 
   const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isPet) return;
-    if (dragRef.current) return; // hover stays true while dragging
-    reportHover(isInsideOrb(e.clientX, e.clientY));
-  }, [isPet, isInsideOrb, reportHover]);
+    if (!isPet || dragRef.current) return;
+    setIsHovering(isInsideOrb(e.clientX, e.clientY));
+  }, [isPet, isInsideOrb]);
 
   const onMouseLeave = useCallback(() => {
-    if (!isPet || dragRef.current) return;
-    reportHover(false);
-  }, [isPet, reportHover]);
+    if (!dragRef.current) setIsHovering(false);
+  }, []);
 
-  const onMouseDown = useCallback((e: React.MouseEvent) => {
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (!isPet || e.button !== 0) return;
     if (!isInsideOrb(e.clientX, e.clientY)) return;
     e.preventDefault();
+    const bridge = petBridge();
+    if (!bridge?.petDrag) return;
+    // Keep receiving moves even if the pointer outruns the window.
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch { /* not fatal */ }
     dragRef.current = {
-      startX: e.clientX, startY: e.clientY, originX: posRef.current.x, originY: posRef.current.y, moved: false,
+      startX: e.screenX, startY: e.screenY, moved: false, raf: null, lastX: e.screenX, lastY: e.screenY,
     };
-    setIsDragging(true);
-    reportHover(true);
 
-    const onMove = (ev: MouseEvent) => {
+    const flush = () => {
       const d = dragRef.current;
       if (!d) return;
-      const dx = ev.clientX - d.startX;
-      const dy = ev.clientY - d.startY;
-      if (!d.moved && Math.hypot(dx, dy) > 3) d.moved = true;
-      if (d.moved) {
-        applyPosition(clampPetPosition({ x: d.originX + dx, y: d.originY + dy }, sizePx));
-      }
+      d.raf = null;
+      bridge.petDrag?.('move', d.lastX, d.lastY);
     };
-    const onUp = (ev: MouseEvent) => {
-      document.removeEventListener('mousemove', onMove, true);
-      document.removeEventListener('mouseup', onUp, true);
+    const onMove = (ev: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      d.lastX = ev.screenX;
+      d.lastY = ev.screenY;
+      if (!d.moved) {
+        if (Math.hypot(ev.screenX - d.startX, ev.screenY - d.startY) < DRAG_THRESHOLD_PX) return;
+        d.moved = true;
+        setIsDragging(true);
+        bridge.petDrag?.('start', d.startX, d.startY);
+      }
+      if (d.raf === null) d.raf = requestAnimationFrame(flush);
+    };
+    const onUp = (ev: PointerEvent) => {
+      document.removeEventListener('pointermove', onMove, true);
+      document.removeEventListener('pointerup', onUp, true);
+      document.removeEventListener('pointercancel', onUp, true);
       const d = dragRef.current;
       dragRef.current = null;
+      if (d?.raf != null) cancelAnimationFrame(d.raf);
+      if (d?.moved) {
+        bridge.petDrag?.('move', ev.screenX, ev.screenY);
+        bridge.petDrag?.('end');
+      }
       setIsDragging(false);
-      if (d?.moved) setStoredPos(posRef.current);
-      reportHover(isInsideOrb(ev.clientX, ev.clientY));
+      setIsHovering(isInsideOrb(ev.clientX, ev.clientY));
     };
-    document.addEventListener('mousemove', onMove, true);
-    document.addEventListener('mouseup', onUp, true);
-  }, [isPet, isInsideOrb, reportHover, applyPosition, sizePx, setStoredPos]);
+    document.addEventListener('pointermove', onMove, true);
+    document.addEventListener('pointerup', onUp, true);
+    document.addEventListener('pointercancel', onUp, true);
+  }, [isPet, isInsideOrb]);
 
   const onContextMenu = useCallback((e: React.MouseEvent) => {
     if (!isPet) return;
     e.preventDefault();
-    (window.api as { showContextMenu?: () => void } | undefined)?.showContextMenu?.();
+    petBridge()?.showContextMenu?.();
   }, [isPet]);
 
   // ---- render ----------------------------------------------------------------
-  const interactive = !(isPet && forceIgnoreMouse);
   const cursor = isDragging ? 'grabbing' : (isPet && isHovering ? 'grab' : 'default');
   const showFallback = failure !== null || contextLost;
 
-  const boxStyle: React.CSSProperties = isPet
-    ? {
-      position: 'absolute',
-      left: `${posRef.current.x}px`,
-      top: `${posRef.current.y}px`,
-      width: `${sizePx}px`,
-      height: `${sizePx}px`,
-      pointerEvents: interactive ? 'auto' : 'none',
-      cursor,
-      userSelect: 'none',
-    }
-    : {
-      position: 'relative',
-      width: '100%',
-      height: '100%',
-      pointerEvents: 'auto',
-      cursor,
-    };
+  const boxStyle: React.CSSProperties = {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    pointerEvents: 'auto',
+    cursor,
+    userSelect: isPet ? 'none' : undefined,
+    touchAction: isPet ? 'none' : undefined,
+  };
 
   return (
     <div
@@ -301,7 +257,7 @@ export function WintermuteCanvas(): JSX.Element {
         style={boxStyle}
         onMouseMove={onMouseMove}
         onMouseLeave={onMouseLeave}
-        onMouseDown={onMouseDown}
+        onPointerDown={onPointerDown}
         onContextMenu={onContextMenu}
       >
         <div

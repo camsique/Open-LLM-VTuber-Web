@@ -18,6 +18,9 @@ declare global {
       setMode: (mode: 'window' | 'pet') => void
       getConfigFiles: () => Promise<any>
       updateConfigFiles: (files: any[]) => void
+      setPetShell: (shell: 'overlay' | 'compact') => void
+      setPetCompactSize: (width: number, height: number) => void
+      petDrag: (phase: 'start' | 'move' | 'end', screenX?: number, screenY?: number) => void
     }
   }
 }
